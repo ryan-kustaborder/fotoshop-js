@@ -10,9 +10,12 @@ const CanvasContainer = () => {
     state.canvas = canvasRef;
 
     React.useEffect(() => {
-        state.context = state.canvas.current.getContext("2d");
+        let cur = state.canvas.current;
+        state.context = cur.getContext("2d");
+        state.canvas.current.width = cur.offsetWidth;
+        state.canvas.current.height = cur.offsetHeight;
+
         render(state);
-        state.test = "test";
     }, []);
 
     return (
