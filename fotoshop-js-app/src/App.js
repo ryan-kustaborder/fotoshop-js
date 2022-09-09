@@ -1,6 +1,6 @@
 import { UserProvider } from "./index";
-import ContextTest from "./ContextTest";
 import CanvasContainer from "./CanvasContainer";
+import DetailsView from "./DetailsView";
 
 function App() {
     return (
@@ -11,7 +11,7 @@ function App() {
                 <div id="display">
                     <CanvasContainer />
                 </div>
-                <div id="details"></div>
+                <DetailsView />
                 <div id="footer"></div>
             </div>
         </UserProvider>
