@@ -2,7 +2,7 @@ import React from "react";
 
 import { UserContext } from "./index";
 
-export default () => {
+const ContextTest = () => {
     const [state, dispatch] = React.useContext(UserContext);
 
     return (
@@ -11,3 +11,5 @@ export default () => {
         </button>
     );
 };
+
+export default ContextTest;
