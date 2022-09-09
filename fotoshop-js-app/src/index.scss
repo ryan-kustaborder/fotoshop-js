@@ -11,44 +11,35 @@
 }
 
 .App {
-    background-color: red;
-
     display: flex;
     flex-wrap: wrap;
 
-    width: 100vw;
-    height: 100vh;
+    // Style all top level containers
+    & > div {
+        background-color: rgb(37, 35, 40);
+        box-shadow: inset 0px 0px 5px 1px rgba(0, 0, 0, 0.55);
+    }
 }
 
 #header {
-    background-color: green;
-    width: 100%;
     height: var(--header-height);
-
     flex: 0 0 100%;
 }
 
 #footer {
-    background-color: blue;
-
     flex: 0 0 100%;
     height: var(--footer-height);
 }
 
 #sidebar {
-    background-color: white;
     width: var(--sidebar-width);
 }
 
 #display {
-    background-color: yellow;
-    width: 48px;
-
     flex-grow: 2;
     height: calc(100vh - var(--header-height) - var(--footer-height));
 }
 
 #details {
-    background-color: purple;
     width: var(--details-width);
 }
