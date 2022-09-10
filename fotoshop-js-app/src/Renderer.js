@@ -10,9 +10,9 @@ export default function render(state) {
     waveCollapse(state.context);
 }
 
-const SIZE = 5;
-const GRID_WIDTH = 100;
-const GRID_HEIGHT = 100;
+const SIZE = 2;
+const GRID_WIDTH = 200;
+const GRID_HEIGHT = 200;
 
 class PotentialState {
     constructor(value, probability) {
@@ -37,10 +37,9 @@ async function waveCollapse(ctx) {
 
         done = isComplete(cells);
 
-        drawCells(cells, ctx);
-
         await new Promise((r) => setTimeout(r, 1));
     }
+    drawCells(cells, ctx);
 }
 
 class Cell {
@@ -49,9 +48,9 @@ class Cell {
         this.y = y;
         this.state = null;
         this.possible = [
-            new PotentialState("blue", 0.2),
-            new PotentialState("yellow", 0.2),
-            new PotentialState("green", 0.6),
+            new PotentialState("blue", 0.1),
+            new PotentialState("yellow", 0.4),
+            new PotentialState("green", 0.5),
         ];
     }
 }
@@ -77,7 +76,20 @@ function isComplete(cells) {
     return result;
 }
 
+function getEntropy(potentials) {
+    let max = 0;
+
+    potentials.forEach((potential) => {
+        if (potential.probability > max) {
+            max = potential.probability;
+        }
+    });
+
+    return max;
+}
+
 async function collapse(cells) {
+    console.log("collapsing");
     let lowEntropies = [];
     let lowestEntropy = 9999;
 
@@ -87,6 +99,10 @@ async function collapse(cells) {
         // Skip cells that have already been selected
         if (entropy === 0) {
             return;
+        }
+
+        if (entropy === 1) {
+            cell.state = cell.possible[0];
         }
 
         if (entropy < lowestEntropy) {
@@ -142,6 +158,26 @@ function selectRandomState(potentials) {
     return selection;
 }
 
+function selectHighestState(potentials) {
+    let states = [];
+    let highest = 0;
+
+    potentials.forEach((state) => {
+        if (state.probability > highest) {
+            states = [state];
+            highest = state.probability;
+        } else if (state.probability === highest) {
+            states.push(state);
+        }
+    });
+
+    console.log(states.length);
+
+    let rand = Math.floor(Math.random() * states.length);
+
+    return states[rand];
+}
+
 function propogateChange(cells) {
     cells.forEach((cell, i) => {
         if (cell.state !== null) {
@@ -155,12 +191,17 @@ function propogateChange(cells) {
                 new PotentialState("blue", 0.9),
                 new PotentialState("yellow", 0.1),
             ];
-        }
-
-        if (containsStateWithValue(neighbors, "green")) {
+        } else if (containsStateWithValue(neighbors, "green")) {
             cell.possible = [
-                new PotentialState("green", 0.6),
-                new PotentialState("yellow", 0.4),
+                new PotentialState("green", 0.7),
+                new PotentialState("yellow", 0.3),
+            ];
+        }
+        if (containsStateWithValue(neighbors, "yellow")) {
+            cell.possible = [
+                new PotentialState("blue", 0.2),
+                new PotentialState("yellow", 0.75),
+                new PotentialState("green", 0.05),
             ];
         }
     });
