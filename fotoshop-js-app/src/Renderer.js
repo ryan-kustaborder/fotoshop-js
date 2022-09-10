@@ -10,16 +10,17 @@ export default function render(state) {
     waveCollapse(state.context);
 }
 
-const SIZE = 2;
-const GRID_WIDTH = 200;
-const GRID_HEIGHT = 200;
+const SIZE = 3;
+const GRID_WIDTH = 50;
+const GRID_HEIGHT = 50;
+const DELAY = 1;
 
-class PotentialState {
-    constructor(value, probability) {
-        this.value = value;
-        this.probability = probability;
-    }
-}
+const BIASES = {
+    default: { g: 1, y: 1, b: 1 },
+    g: { g: 9, y: 1, b: -10 },
+    y: { g: 1, y: 8, b: 1 },
+    b: { g: -10, y: 1, b: 9 },
+};
 
 async function waveCollapse(ctx) {
     let cells = [];
@@ -31,15 +32,39 @@ async function waveCollapse(ctx) {
     }
 
     let done = false;
+
     while (!done) {
-        collapse(cells);
-        propogateChange(cells);
+        let highBiasCells = [];
+        let highestBias = 0;
+
+        cells.forEach((cell) => {
+            if (cell.state) {
+                return;
+            }
+
+            let bias = cell.getTotalBias();
+
+            if (bias > highestBias) {
+                highBiasCells = [cell];
+                highestBias = bias;
+            } else if (bias === highestBias) {
+                highBiasCells.push(cell);
+            }
+        });
+
+        let rand = Math.floor(Math.random() * highBiasCells.length);
+
+        highBiasCells[rand].collapse();
 
         done = isComplete(cells);
 
-        await new Promise((r) => setTimeout(r, 1));
+        drawCells(cells, ctx);
+
+        // Update the biases
+        updateBiases(cells);
+
+        await new Promise((r) => setTimeout(r, DELAY));
     }
-    drawCells(cells, ctx);
 }
 
 class Cell {
@@ -47,18 +72,51 @@ class Cell {
         this.x = x;
         this.y = y;
         this.state = null;
-        this.possible = [
-            new PotentialState("blue", 0.1),
-            new PotentialState("yellow", 0.4),
-            new PotentialState("green", 0.5),
-        ];
+
+        this.biases = { g: 1, y: 1, b: 1 };
+    }
+
+    collapse() {
+        let sum = 0;
+        let stacked = [];
+
+        if (this.biases.g > 0) {
+            stacked.push({ state: "green", max: sum });
+            sum += this.biases.g;
+        }
+
+        if (this.biases.y > 0) {
+            stacked.push({ state: "yellow", max: sum });
+            sum += this.biases.y;
+        }
+
+        if (this.biases.b > 0) {
+            stacked.push({ state: "blue", max: sum });
+            sum += this.biases.b;
+        }
+
+        let rand = Math.random() * sum;
+
+        stacked.forEach((bias) => {
+            if (rand > bias.max) {
+                this.state = bias.state;
+            }
+        });
+    }
+
+    getTotalBias() {
+        return (
+            Math.abs(this.biases.g) +
+            Math.abs(this.biases.y) +
+            Math.abs(this.biases.b)
+        );
     }
 }
 
 function drawCells(cells, ctx) {
     cells.forEach((cell) => {
         if (cell.state) {
-            ctx.fillStyle = cell.state.value;
+            ctx.fillStyle = cell.state;
             ctx.fillRect(10 + cell.x * SIZE, 10 + cell.y * SIZE, SIZE, SIZE);
         }
     });
@@ -76,141 +134,44 @@ function isComplete(cells) {
     return result;
 }
 
-function getEntropy(potentials) {
-    let max = 0;
-
-    potentials.forEach((potential) => {
-        if (potential.probability > max) {
-            max = potential.probability;
-        }
-    });
-
-    return max;
-}
-
-async function collapse(cells) {
-    console.log("collapsing");
-    let lowEntropies = [];
-    let lowestEntropy = 9999;
-
-    cells.forEach((cell) => {
-        let entropy = cell.possible.length;
-
-        // Skip cells that have already been selected
-        if (entropy === 0) {
-            return;
-        }
-
-        if (entropy === 1) {
-            cell.state = cell.possible[0];
-        }
-
-        if (entropy < lowestEntropy) {
-            lowEntropies = [cell];
-            lowestEntropy = entropy;
-        } else if (entropy === lowestEntropy) {
-            lowEntropies.push(cell);
-        }
-    });
-
-    let i = Math.floor(Math.random() * lowEntropies.length);
-
-    let selection = lowEntropies[i];
-
-    let stateIndex = Math.floor(Math.random() * selection.possible.length);
-
-    selection.state = selectRandomState(selection.possible);
-
-    lowEntropies[i].possible = [];
-}
-
-function containsStateWithValue(arr, val) {
-    let result = false;
-
-    arr.forEach((state, i) => {
-        if (state && state.value === val) {
-            result = true;
-        }
-    });
-
-    return result;
-}
-
-function selectRandomState(potentials) {
-    let values = [];
-    let a = 0;
-
-    potentials.forEach((state, i) => {
-        values.push({ state: state, area: a });
-        a += state.probability;
-    });
-
-    let rand = Math.random();
-
-    let selection;
-
-    values.forEach((value, i) => {
-        if (rand > value.area) {
-            selection = value.state;
-        }
-    });
-
-    return selection;
-}
-
-function selectHighestState(potentials) {
-    let states = [];
-    let highest = 0;
-
-    potentials.forEach((state) => {
-        if (state.probability > highest) {
-            states = [state];
-            highest = state.probability;
-        } else if (state.probability === highest) {
-            states.push(state);
-        }
-    });
-
-    console.log(states.length);
-
-    let rand = Math.floor(Math.random() * states.length);
-
-    return states[rand];
-}
-
-function propogateChange(cells) {
+function updateBiases(cells) {
     cells.forEach((cell, i) => {
-        if (cell.state !== null) {
-            return;
-        }
+        let neighborStates = getCellNeighborStates(cells, i);
 
-        let neighbors = getCellNeighborStates(cells, i);
+        let newBiases = {
+            g: BIASES.default.g,
+            y: BIASES.default.y,
+            b: BIASES.default.b,
+        };
 
-        if (containsStateWithValue(neighbors, "blue")) {
-            cell.possible = [
-                new PotentialState("blue", 0.9),
-                new PotentialState("yellow", 0.1),
-            ];
-        } else if (containsStateWithValue(neighbors, "green")) {
-            cell.possible = [
-                new PotentialState("green", 0.7),
-                new PotentialState("yellow", 0.3),
-            ];
-        }
-        if (containsStateWithValue(neighbors, "yellow")) {
-            cell.possible = [
-                new PotentialState("blue", 0.2),
-                new PotentialState("yellow", 0.75),
-                new PotentialState("green", 0.05),
-            ];
-        }
+        neighborStates.forEach((state) => {
+            if (state === "green") {
+                newBiases.g += BIASES.g.g;
+                newBiases.y += BIASES.g.y;
+                newBiases.b += BIASES.g.b;
+            }
+
+            if (state === "yellow") {
+                newBiases.g += BIASES.y.g;
+                newBiases.y += BIASES.y.y;
+                newBiases.b += BIASES.y.b;
+            }
+
+            if (state === "blue") {
+                newBiases.g += BIASES.b.g;
+                newBiases.y += BIASES.b.y;
+                newBiases.b += BIASES.b.b;
+            }
+        });
+
+        cell.biases = newBiases;
     });
 }
 
 function getCellNeighborStates(cells, i) {
     let states = [];
 
-    // Above
+    // Up
     if (i - GRID_WIDTH >= 0) {
         states.push(cells[i - GRID_WIDTH].state);
     }
