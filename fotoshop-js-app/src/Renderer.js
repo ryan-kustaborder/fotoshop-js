@@ -10,16 +10,16 @@ export default function render(state) {
     waveCollapse(state.context);
 }
 
-const SIZE = 3;
+const SIZE = 10;
 const GRID_WIDTH = 50;
 const GRID_HEIGHT = 50;
 const DELAY = 1;
 
 const BIASES = {
-    default: { g: 1, y: 1, b: 1 },
-    g: { g: 9, y: 1, b: -10 },
-    y: { g: 1, y: 8, b: 1 },
-    b: { g: -10, y: 1, b: 9 },
+    default: { g: 2, y: 0, b: 2 },
+    g: { g: 4, y: 1, b: -2 },
+    y: { g: 4, y: 2, b: 4 },
+    b: { g: -2, y: 1, b: 4 },
 };
 
 async function waveCollapse(ctx) {
@@ -53,15 +53,16 @@ async function waveCollapse(ctx) {
         });
 
         let rand = Math.floor(Math.random() * highBiasCells.length);
+        let selectedCell = highBiasCells[rand];
 
-        highBiasCells[rand].collapse();
+        selectedCell.collapse();
 
         done = isComplete(cells);
 
         drawCells(cells, ctx);
 
         // Update the biases
-        updateBiases(cells);
+        updateBiases(cells, selectedCell);
 
         await new Promise((r) => setTimeout(r, DELAY));
     }
@@ -117,7 +118,7 @@ function drawCells(cells, ctx) {
     cells.forEach((cell) => {
         if (cell.state) {
             ctx.fillStyle = cell.state;
-            ctx.fillRect(10 + cell.x * SIZE, 10 + cell.y * SIZE, SIZE, SIZE);
+            ctx.fillRect(cell.x * SIZE, cell.y * SIZE, SIZE, SIZE);
         }
     });
 }
@@ -134,8 +135,84 @@ function isComplete(cells) {
     return result;
 }
 
-function updateBiases(cells) {
+function getNeighboringCells(cells, i) {
+    let neighbors = [];
+
+    // Up
+    if (i - GRID_WIDTH >= 0) {
+        neighbors.push(cells[i - GRID_WIDTH]);
+    }
+
+    // Down
+    if (i + GRID_WIDTH < cells.length) {
+        neighbors.push(cells[i + GRID_WIDTH]);
+    }
+
+    // Left
+    if (
+        i - 1 > 0 &&
+        Math.floor((i - 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
+    ) {
+        neighbors.push(cells[i - 1]);
+    }
+
+    // Right
+    if (
+        i + 1 < cells.length &&
+        Math.floor((i + 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
+    ) {
+        neighbors.push(cells[i + 1]);
+    }
+
+    // Up Left
+    if (
+        i - 1 - GRID_WIDTH > 0 &&
+        Math.floor((i - 1 - GRID_WIDTH) / GRID_WIDTH) ===
+            Math.floor(i / GRID_WIDTH) - 1
+    ) {
+        neighbors.push(cells[i - 1 - GRID_WIDTH]);
+    }
+
+    // Up Right
+    if (
+        i + 1 - GRID_WIDTH > 0 &&
+        Math.floor((i + 1 - GRID_WIDTH) / GRID_WIDTH) ===
+            Math.floor(i / GRID_WIDTH) - 1
+    ) {
+        neighbors.push(cells[i + 1 - GRID_WIDTH]);
+    }
+
+    // Down Left
+    if (
+        i - 1 + GRID_WIDTH < cells.length &&
+        Math.floor((i - 1 + GRID_WIDTH) / GRID_WIDTH) ===
+            Math.floor(i / GRID_WIDTH) + 1
+    ) {
+        neighbors.push(cells[i - 1 + GRID_WIDTH]);
+    }
+
+    // Down Right
+    if (
+        i + 1 + GRID_WIDTH < cells.length &&
+        Math.floor((i + 1 + GRID_WIDTH) / GRID_WIDTH) ===
+            Math.floor(i / GRID_WIDTH) + 1
+    ) {
+        neighbors.push(cells[i + 1 + GRID_WIDTH]);
+    }
+
+    return neighbors;
+}
+
+function updateBiases(cells, originCell) {
+    let index = originCell.x + GRID_WIDTH * originCell.y;
+
+    // Only need to update neighboring cells
+    let neighbors = getNeighboringCells(cells, index);
+
     cells.forEach((cell, i) => {
+        if (!neighbors.includes(cell)) {
+            return;
+        }
         let neighborStates = getCellNeighborStates(cells, i);
 
         let newBiases = {
@@ -171,31 +248,13 @@ function updateBiases(cells) {
 function getCellNeighborStates(cells, i) {
     let states = [];
 
-    // Up
-    if (i - GRID_WIDTH >= 0) {
-        states.push(cells[i - GRID_WIDTH].state);
-    }
+    let neighbors = getNeighboringCells(cells, i);
 
-    // Below
-    if (i + GRID_WIDTH < cells.length) {
-        states.push(cells[i + GRID_WIDTH].state);
-    }
-
-    // Left
-    if (
-        i - 1 > 0 &&
-        Math.floor((i - 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
-    ) {
-        states.push(cells[i - 1].state);
-    }
-
-    // Right
-    if (
-        i + 1 < cells.length &&
-        Math.floor((i + 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
-    ) {
-        states.push(cells[i + 1].state);
-    }
+    neighbors.forEach((cell) => {
+        if (cell.state) {
+            states.push(cell.state);
+        }
+    });
 
     return states;
 }
