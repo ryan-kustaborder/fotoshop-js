@@ -10,11 +10,15 @@ export default function render(state) {
     waveCollapse(state.context);
 }
 
+const SIZE = 10;
+const GRID_WIDTH = 50;
+const GRID_HEIGHT = 50;
+
 async function waveCollapse(ctx) {
     let cells = [];
 
-    for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 10; x++) {
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+        for (let x = 0; x < GRID_WIDTH; x++) {
             cells.push(new Cell(x, y));
         }
     }
@@ -28,12 +32,10 @@ async function waveCollapse(ctx) {
 
         cells.forEach((cell) => {
             ctx.fillStyle = cell.color;
-            ctx.fillRect(100 + cell.x * 50, 50 + cell.y * 50, 50, 50);
+            ctx.fillRect(10 + cell.x * SIZE, 10 + cell.y * SIZE, SIZE, SIZE);
         });
 
-        await new Promise((r) => setTimeout(r, 100));
-
-        //await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 1));
     }
 }
 
@@ -42,7 +44,7 @@ class Cell {
         this.x = x;
         this.y = y;
         this.color = "black";
-        this.possible = ["red", "blue", "green"];
+        this.possible = ["blue", "yellow", "green"];
     }
 }
 
@@ -94,10 +96,46 @@ function propogateChange(cells) {
             return;
         }
 
-        if (i + 1 < cells.length) {
-            if (cells[i + 1].color === "red") {
-                cell.possible = cell.possible.filter((e) => e !== "blue");
-            }
+        let neighbors = getCellNeighborStates(cells, i);
+
+        if (neighbors.includes("blue")) {
+            cell.possible = cell.possible.filter((e) => e !== "green");
+        }
+
+        if (neighbors.includes("green")) {
+            cell.possible = cell.possible.filter((e) => e !== "blue");
         }
     });
+}
+
+function getCellNeighborStates(cells, i) {
+    let states = [];
+
+    // Above
+    if (i - GRID_WIDTH >= 0) {
+        states.push(cells[i - GRID_WIDTH].color);
+    }
+
+    // Below
+    if (i + GRID_WIDTH < cells.length) {
+        states.push(cells[i + GRID_WIDTH].color);
+    }
+
+    // Left
+    if (
+        i - 1 > 0 &&
+        Math.floor((i - 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
+    ) {
+        states.push(cells[i - 1].color);
+    }
+
+    // Right
+    if (
+        i + 1 < cells.length &&
+        Math.floor((i + 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
+    ) {
+        states.push(cells[i + 1].color);
+    }
+
+    return states;
 }
