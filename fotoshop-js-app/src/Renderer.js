@@ -59,7 +59,7 @@ async function waveCollapse(ctx) {
 
         done = isComplete(cells);
 
-        drawCells(cells, ctx);
+        drawCell(selectedCell, ctx);
 
         // Update the biases
         updateBiases(cells, selectedCell);
@@ -114,13 +114,11 @@ class Cell {
     }
 }
 
-function drawCells(cells, ctx) {
-    cells.forEach((cell) => {
-        if (cell.state) {
-            ctx.fillStyle = cell.state;
-            ctx.fillRect(cell.x * SIZE, cell.y * SIZE, SIZE, SIZE);
-        }
-    });
+function drawCell(cell, ctx) {
+    if (cell.state) {
+        ctx.fillStyle = cell.state;
+        ctx.fillRect(cell.x * SIZE, cell.y * SIZE, SIZE, SIZE);
+    }
 }
 
 function isComplete(cells) {
@@ -213,6 +211,7 @@ function updateBiases(cells, originCell) {
         if (!neighbors.includes(cell)) {
             return;
         }
+
         let neighborStates = getCellNeighborStates(cells, i);
 
         let newBiases = {
