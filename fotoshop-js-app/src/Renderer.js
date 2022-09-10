@@ -10,9 +10,16 @@ export default function render(state) {
     waveCollapse(state.context);
 }
 
-const SIZE = 10;
-const GRID_WIDTH = 50;
-const GRID_HEIGHT = 50;
+const SIZE = 5;
+const GRID_WIDTH = 100;
+const GRID_HEIGHT = 100;
+
+class PotentialState {
+    constructor(value, probability) {
+        this.value = value;
+        this.probability = probability;
+    }
+}
 
 async function waveCollapse(ctx) {
     let cells = [];
@@ -30,10 +37,7 @@ async function waveCollapse(ctx) {
 
         done = isComplete(cells);
 
-        cells.forEach((cell) => {
-            ctx.fillStyle = cell.color;
-            ctx.fillRect(10 + cell.x * SIZE, 10 + cell.y * SIZE, SIZE, SIZE);
-        });
+        drawCells(cells, ctx);
 
         await new Promise((r) => setTimeout(r, 1));
     }
@@ -43,16 +47,29 @@ class Cell {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.color = "black";
-        this.possible = ["blue", "yellow", "green"];
+        this.state = null;
+        this.possible = [
+            new PotentialState("blue", 0.2),
+            new PotentialState("yellow", 0.2),
+            new PotentialState("green", 0.6),
+        ];
     }
+}
+
+function drawCells(cells, ctx) {
+    cells.forEach((cell) => {
+        if (cell.state) {
+            ctx.fillStyle = cell.state.value;
+            ctx.fillRect(10 + cell.x * SIZE, 10 + cell.y * SIZE, SIZE, SIZE);
+        }
+    });
 }
 
 function isComplete(cells) {
     let result = true;
 
     cells.forEach((cell) => {
-        if (cell.color === "black") {
+        if (cell.state === null) {
             result = false;
         }
     });
@@ -84,26 +101,67 @@ async function collapse(cells) {
 
     let selection = lowEntropies[i];
 
-    let state = Math.floor(Math.random() * selection.possible.length);
+    let stateIndex = Math.floor(Math.random() * selection.possible.length);
 
-    lowEntropies[i].color = selection.possible[state];
+    selection.state = selectRandomState(selection.possible);
+
     lowEntropies[i].possible = [];
+}
+
+function containsStateWithValue(arr, val) {
+    let result = false;
+
+    arr.forEach((state, i) => {
+        if (state && state.value === val) {
+            result = true;
+        }
+    });
+
+    return result;
+}
+
+function selectRandomState(potentials) {
+    let values = [];
+    let a = 0;
+
+    potentials.forEach((state, i) => {
+        values.push({ state: state, area: a });
+        a += state.probability;
+    });
+
+    let rand = Math.random();
+
+    let selection;
+
+    values.forEach((value, i) => {
+        if (rand > value.area) {
+            selection = value.state;
+        }
+    });
+
+    return selection;
 }
 
 function propogateChange(cells) {
     cells.forEach((cell, i) => {
-        if (cell.color !== "black") {
+        if (cell.state !== null) {
             return;
         }
 
         let neighbors = getCellNeighborStates(cells, i);
 
-        if (neighbors.includes("blue")) {
-            cell.possible = cell.possible.filter((e) => e !== "green");
+        if (containsStateWithValue(neighbors, "blue")) {
+            cell.possible = [
+                new PotentialState("blue", 0.9),
+                new PotentialState("yellow", 0.1),
+            ];
         }
 
-        if (neighbors.includes("green")) {
-            cell.possible = cell.possible.filter((e) => e !== "blue");
+        if (containsStateWithValue(neighbors, "green")) {
+            cell.possible = [
+                new PotentialState("green", 0.6),
+                new PotentialState("yellow", 0.4),
+            ];
         }
     });
 }
@@ -113,12 +171,12 @@ function getCellNeighborStates(cells, i) {
 
     // Above
     if (i - GRID_WIDTH >= 0) {
-        states.push(cells[i - GRID_WIDTH].color);
+        states.push(cells[i - GRID_WIDTH].state);
     }
 
     // Below
     if (i + GRID_WIDTH < cells.length) {
-        states.push(cells[i + GRID_WIDTH].color);
+        states.push(cells[i + GRID_WIDTH].state);
     }
 
     // Left
@@ -126,7 +184,7 @@ function getCellNeighborStates(cells, i) {
         i - 1 > 0 &&
         Math.floor((i - 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
     ) {
-        states.push(cells[i - 1].color);
+        states.push(cells[i - 1].state);
     }
 
     // Right
@@ -134,7 +192,7 @@ function getCellNeighborStates(cells, i) {
         i + 1 < cells.length &&
         Math.floor((i + 1) / GRID_WIDTH) === Math.floor(i / GRID_WIDTH)
     ) {
-        states.push(cells[i + 1].color);
+        states.push(cells[i + 1].state);
     }
 
     return states;

@@ -1,6 +1,5 @@
 import React from "react";
 import { UserContext } from "./index";
-import render from "./Renderer";
 
 const CanvasContainer = () => {
     const [state, dispatch] = React.useContext(UserContext);
@@ -14,8 +13,6 @@ const CanvasContainer = () => {
         state.context = cur.getContext("2d");
         state.canvas.current.width = cur.offsetWidth;
         state.canvas.current.height = cur.offsetHeight;
-
-        //render(state);
     }, []);
 
     return (
