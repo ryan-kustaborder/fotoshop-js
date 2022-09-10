@@ -15,7 +15,7 @@ const CanvasContainer = () => {
         state.canvas.current.width = cur.offsetWidth;
         state.canvas.current.height = cur.offsetHeight;
 
-        render(state);
+        //render(state);
     }, []);
 
     return (
